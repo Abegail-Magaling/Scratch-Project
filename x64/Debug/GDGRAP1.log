@@ -1,0 +1,4 @@
+﻿  main.cpp
+C:\Users\Abegail Laureen\Downloads\GDGRAP1\main.cpp(192,21): warning C4305: '+=': truncation from 'double' to 'float'
+C:\Users\Abegail Laureen\Downloads\GDGRAP1\main.cpp(218,30): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+  GDGRAP1.vcxproj -> C:\Users\Abegail Laureen\Downloads\GDGRAP1\x64\Debug\GDGRAP1.exe
