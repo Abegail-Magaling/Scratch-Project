@@ -10,6 +10,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 
 //Modifier for the model's x Position
 float x_mod = 0.0f;
@@ -72,7 +75,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(600, 600, "Abegail Laureen R. Magaling", NULL, NULL);
+    window = glfwCreateWindow(600, 600, "Abegail Laureen Magaling", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -82,6 +85,8 @@ int main(void)
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
     gladLoadGL();
+
+    int img_width, img_height, colorChannels;
 
     //Create a Vertex Shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -123,7 +128,7 @@ int main(void)
         600); // Height
     */
 
-    std::string path = "3D/bunny.obj";
+    std::string path = "3D/myCube.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> material;
     std::string warning, error;
@@ -137,6 +142,24 @@ int main(void)
     {
         mesh_indices.push_back(shapes[0].mesh.indices[i].vertex_index);
     }
+
+    stbi_set_flip_vertically_on_load(true);
+
+    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", &img_width, &img_height, &colorChannels, 0);
+
+    GLuint texture;
+
+    glGenTextures(1, &texture); //generate reference
+
+    glActiveTexture(GL_TEXTURE0); //set the current texture to texture 0
+
+    glBindTexture(GL_TEXTURE_2D, texture);//bind
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img_width, img_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_bytes);
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(tex_bytes);
 
     GLfloat vertices[]
     {
@@ -152,13 +175,25 @@ int main(void)
         0,1,2
     };
 
+    GLfloat UV[]{
+        0.f, 1.f,
+        0.f, 0.f,
+        1.f, 1.f,
+        1.f, 0.f,
+        1.f, 1.f,
+        1.f, 0.f,
+        0.f, 1.f,
+        0.f, 0.f
+    };
+
     //Create VAO,VBO,EBO Variables
-    GLuint VAO, VBO, EBO;
+    GLuint VAO, VBO, EBO, VBO_UV;
 
     //Initialize VAO and VBO
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
+    glGenBuffers(1, &VBO_UV);
 
     //Currently Editing VAO = null
     glBindVertexArray(VAO);
@@ -181,6 +216,11 @@ int main(void)
 
     glEnableVertexAttribArray(0);
 
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_UV);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (sizeof(UV) / sizeof(UV[0])), &UV[0], GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(2);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -191,15 +231,15 @@ int main(void)
     float y = 0.0;
     float z = -5.0;
 
-    float scale_x = 3.0;
-    float scale_y = 3.0;
-    float scale_z = 3.0;
+    float scale_x = 1.0;
+    float scale_y = 1.0;
+    float scale_z = 1.0;
 
     float axis_x = 0.0;
-    float axis_y = 0.0;
-    float axis_z = 1.0;
+    float axis_y = 1.0;
+    float axis_z = 0.0;
 
-    float theta = 0.0;
+    float theta = 45.0;
 
     /*//Create projection matrix
     glm::mat4 projectionMatrix = glm::ortho(-2.f, //L
@@ -215,52 +255,144 @@ int main(void)
         window_height / window_width, // Aspect Ratio
         0.1f, // ZNear > 0
         100.f); // ZFar
+
+    glm::vec3 cameraPos = glm::vec3(0, 2.0f, 5.0f);
+
+    glm::mat4 cameraPositionMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
+
+    glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
+
+    glm::vec3 Center = glm::vec3(0, -1.0f, 0);
+
+    //get forward
+    glm::vec3 F = glm::vec3(Center - cameraPos);
+    F = glm::normalize(F);
+
+    //get the right
+    glm::vec3 R = glm::normalize(glm::cross(F, WorldUp));
+
+    glm::vec3 U = glm::normalize(glm::cross(R, F));
+    
+    
+
+    //glm::mat4 cameraOrientation = glm::mat4(1.0f);
+
+    ////matrix[Column][Row]
+    //cameraOrientation[0][0] = R.x;
+    //cameraOrientation[1][0] = R.y;
+    //cameraOrientation[2][0] = R.z;
+    //
+    //cameraOrientation[0][1] = U.x;
+    //cameraOrientation[1][1] = U.y;
+    //cameraOrientation[2][1] = U.z;
+
+    //cameraOrientation[0][2] = -F.x;
+    //cameraOrientation[1][2] = -F.y;
+    //cameraOrientation[2][2] = -F.z;
+
+    glm::mat4 viewMatrix = glm::lookAt(cameraPos, Center, WorldUp);
+
+    glEnable(GL_DEPTH_TEST);
+
+
     
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProg);
-
-        float radius = 2.0f;
-        float angle_offset = 0.0f;
-
-        for (int i = 0; i < 3; ++i) {
-            float current_theta = theta + angle_offset;
-
-            float cos_current = cos(glm::radians(current_theta));
-            float sin_current = sin(glm::radians(current_theta));
-
-            float x_mod_current = radius * cos_current;
-            float y_mod_current = radius * sin_current;
-
-            glm::mat4 transformation_matrix = glm::translate(identity_matrix, glm::vec3(x_mod_current, y_mod_current, z));
-            transformation_matrix = glm::scale(transformation_matrix, glm::vec3(scale_x, scale_y, scale_z));
-            transformation_matrix = glm::rotate(transformation_matrix, glm::radians(current_theta), glm::vec3(axis_x, axis_x, axis_z));
-
-    
-            unsigned int transformLoc = glGetUniformLocation(shaderProg, "transform");
-            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
-
-            glBindVertexArray(VAO);
-            glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+        z = z_mod;
+        theta += 0.01f;
 
 
-            angle_offset += 120.0f;
+        //Start with the translation matrix
+        glm::mat4 transformation_matrix = glm::translate(identity_martix, glm::vec3(x, y, z));
 
-            theta += 0.03f;
-        }
+        //Multiply the resulting matrix with the scale matrix
+        transformation_matrix = glm::scale(transformation_matrix, glm::vec3(scale_x, scale_y, scale_z));
 
+        //Finally, multiply it with the rotation matrix
+        transformation_matrix = glm::rotate(transformation_matrix, glm::radians(theta), glm::normalize(glm::vec3(axis_x, axis_y, axis_z)));
+
+        //Get location of projection matrix
         unsigned int projectionLoc = glGetUniformLocation(shaderProg, "projection");
+        //Assign the matrix
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+        unsigned int viewLoc = glGetUniformLocation(shaderProg, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+
+        //Get location of transformation matrix
+        unsigned int transformLoc = glGetUniformLocation(shaderProg, "transform");
+        //Assign the matrix
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
+
+        GLuint tex0Address = glGetUniformLocation(shaderProg, "tex0");
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glUniform1i(tex0Address, 0);
+
+
+            //Tell openGL to use this shader
+            //for VAO/s below
+        glUseProgram(shaderProg);
+        glBindVertexArray(VAO);
+
+        //Bind The VAO to prep it for drawing
+        glBindVertexArray(VAO);
+        //Draw the triangle
+        //glDrawArrays(GL_TRIANGLES, 0 , 3);
+        glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
         /* Poll for and process events */
         glfwPollEvents();
+
+
+
+        //glClear(GL_COLOR_BUFFER_BIT);
+
+        //glUseProgram(shaderProg);
+
+        //float radius = 2.0f;
+        //float angle_offset = 0.0f;
+
+        //for (int i = 0; i < 3; ++i) {
+        //    float current_theta = theta + angle_offset;
+
+        //    float cos_current = cos(glm::radians(current_theta));
+        //    float sin_current = sin(glm::radians(current_theta));
+
+        //    float x_mod_current = radius * cos_current;
+        //    float y_mod_current = radius * sin_current;
+
+        //    glm::mat4 transformation_matrix = glm::translate(identity_matrix, glm::vec3(x_mod_current, y_mod_current, z));
+        //    transformation_matrix = glm::scale(transformation_matrix, glm::vec3(scale_x, scale_y, scale_z));
+        //    transformation_matrix = glm::rotate(transformation_matrix, glm::radians(current_theta), glm::vec3(axis_x, axis_x, axis_z));
+
+    
+        //    unsigned int transformLoc = glGetUniformLocation(shaderProg, "transform");
+        //    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
+
+        //    glBindVertexArray(VAO);
+        //    glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+
+
+        //    angle_offset += 120.0f;
+
+        //    theta += 0.03f;
+        //}
+
+        //unsigned int projectionLoc = glGetUniformLocation(shaderProg, "projection");
+        //glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+        ///* Swap front and back buffers */
+        //glfwSwapBuffers(window);
+
+        ///* Poll for and process events */
+        //glfwPollEvents();
     }
     //Cleanup
     glDeleteVertexArrays(1, &VAO);
