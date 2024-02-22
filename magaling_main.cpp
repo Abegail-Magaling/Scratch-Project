@@ -128,7 +128,7 @@ int main(void)
         600); // Height
     */
 
-    std::string path = "3D/myCube.obj";
+    std::string path = "3D/djSword.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> material;
     std::string warning, error;
@@ -137,15 +137,53 @@ int main(void)
 
     bool success = tinyobj::LoadObj(&attributes, &shapes, &material, &warning, &error, path.c_str());
 
-    std::vector<GLuint> mesh_indices;
+    /*std::vector<GLuint> mesh_indices;
     for (int i = 0; i < shapes[0].mesh.indices.size(); i++)
     {
         mesh_indices.push_back(shapes[0].mesh.indices[i].vertex_index);
+    }*/
+
+    std::vector<GLfloat> fullVertexData;
+    for (int i = 0; i < shapes[0].mesh.indices.size(); i++) {
+        //assign the index data for easy access
+        tinyobj::index_t vData = shapes[0].mesh.indices[i];
+
+        fullVertexData.push_back(
+            attributes.vertices[(vData.vertex_index * 3)]
+        );
+
+        fullVertexData.push_back(
+            attributes.vertices[(vData.vertex_index * 3) + 1]
+        );
+
+        fullVertexData.push_back(
+            attributes.vertices[(vData.vertex_index * 3) + 2]
+        );
+
+        fullVertexData.push_back(
+            attributes.normals[(vData.normal_index * 3)]
+        );
+
+        fullVertexData.push_back(
+            attributes.normals[(vData.normal_index * 3) + 1]
+        );
+
+        fullVertexData.push_back(
+            attributes.normals[(vData.normal_index * 3) + 2]
+        );
+
+        fullVertexData.push_back(
+            attributes.texcoords[(vData.texcoord_index * 2)]
+        );
+
+        fullVertexData.push_back(
+            attributes.texcoords[(vData.texcoord_index * 2) + 1]
+        );
     }
 
     stbi_set_flip_vertically_on_load(true);
 
-    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", &img_width, &img_height, &colorChannels, 0);
+    unsigned char* tex_bytes = stbi_load("3D/partenza.jpg", &img_width, &img_height, &colorChannels, 0);
 
     GLuint texture;
 
@@ -155,7 +193,7 @@ int main(void)
 
     glBindTexture(GL_TEXTURE_2D, texture);//bind
     
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img_width, img_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_bytes);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_width, img_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_bytes);
 
     glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -187,13 +225,13 @@ int main(void)
     };
 
     //Create VAO,VBO,EBO Variables
-    GLuint VAO, VBO, EBO, VBO_UV;
+    GLuint VAO, VBO;
 
     //Initialize VAO and VBO
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glGenBuffers(1, &VBO_UV);
+    /*glGenBuffers(1, &EBO);
+    glGenBuffers(1, &VBO_UV);*/
 
     //Currently Editing VAO = null
     glBindVertexArray(VAO);
@@ -201,39 +239,77 @@ int main(void)
     // 
     //Currently Editing VBO = null
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    //Currently Editing VBO = VBO
-    //VAO <-VBO
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GL_FLOAT) * attributes.vertices.size() /*Size of buffer in bytes*/,
-        attributes.vertices.data() /*Array*/, GL_STATIC_DRAW);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(GLfloat) * fullVertexData.size(),
+        fullVertexData.data(),
+        GL_DYNAMIC_DRAW
+    );
 
-    glVertexAttribPointer(0, 3 /*x y z*/, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-    //Currently Editing VBO = VBO
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    //Currently Editing VBO = EBO
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mesh_indices.size(), mesh_indices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(
+        0,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        8 * sizeof(float),
+        (void*)0
+    );
 
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO_UV);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (sizeof(UV) / sizeof(UV[0])), &UV[0], GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    GLintptr normalPtr = 3 * sizeof(float);
+
+    glVertexAttribPointer(
+        1,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        8 * sizeof(float),
+        (void*)normalPtr
+    );
+
+    glEnableVertexAttribArray(1);
+
+    //since uv starts at index 3 or the 4th index of our vertex data
+    GLintptr uvPtr = 6 * sizeof(float);
+
+    glVertexAttribPointer(
+        2,                      //index is 2 for texCoordinates
+        2,                      //UV is 2 floats (U, V)
+        GL_FLOAT,               //data type of array
+        GL_FALSE,               //not normalized = GL_FALSE
+        8 * sizeof(float),      //vertex has 5 floats in it
+        (void*)uvPtr            //add in the offset in the end
+    );
+
     glEnableVertexAttribArray(2);
+    //Currently Editing VBO = VBO
+    //VAO <-VBO
+
+
+        //Currently Editing VBO = VBO
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        //Currently Editing VBO = EBO
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mesh_indices.size(), mesh_indices.data(), GL_STATIC_DRAW);
+
+    //glBindBuffer(GL_ARRAY_BUFFER, VBO_UV);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (sizeof(UV) / sizeof(UV[0])), &UV[0], GL_DYNAMIC_DRAW);
+    //glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glm::mat4 identity_martix = glm::mat4(1.0f);
 
     float x = 0.0;
     float y = 0.0;
-    float z = -5.0;
+    float z = 5.0;
 
-    float scale_x = 1.0;
-    float scale_y = 1.0;
-    float scale_z = 1.0;
+    float scale_x = 0.05;
+    float scale_y = 0.05;
+    float scale_z = 0.05;
 
     float axis_x = 0.0;
     float axis_y = 1.0;
@@ -256,22 +332,22 @@ int main(void)
         0.1f, // ZNear > 0
         100.f); // ZFar
 
-    glm::vec3 cameraPos = glm::vec3(0, 2.0f, 5.0f);
+    glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 5.0f);
 
-    glm::mat4 cameraPositionMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
+    //glm::mat4 cameraPositionMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
 
     glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
 
-    glm::vec3 Center = glm::vec3(0, -1.0f, 0);
+    glm::vec3 Center = glm::vec3(0, 1.0f, 0);
 
     //get forward
-    glm::vec3 F = glm::vec3(Center - cameraPos);
-    F = glm::normalize(F);
+    //glm::vec3 F = glm::vec3(Center - cameraPos);
+    //F = glm::normalize(F);
 
-    //get the right
-    glm::vec3 R = glm::normalize(glm::cross(F, WorldUp));
+    ////get the right
+    //glm::vec3 R = glm::normalize(glm::cross(F, WorldUp));
 
-    glm::vec3 U = glm::normalize(glm::cross(R, F));
+    //glm::vec3 U = glm::normalize(glm::cross(R, F));
     
     
 
@@ -295,6 +371,16 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
 
 
+    glm::vec3 lightPos = glm::vec3(-10, 3, 0);
+
+    glm::vec3 lightColor = glm::vec3(0.60f, 0.40f, 1.0f);
+
+    float ambientStr = 0.5f;
+    glm::vec3 ambientColor = lightColor;
+
+    float specStr = 10.0f;
+
+    float specPhong = 16;
     
 
     /* Loop until the user closes the window */
@@ -330,6 +416,28 @@ int main(void)
 
         GLuint tex0Address = glGetUniformLocation(shaderProg, "tex0");
         glBindTexture(GL_TEXTURE_2D, texture);
+
+        GLuint lightAddress = glGetUniformLocation(shaderProg, "lightPos");
+        glUniform3fv(lightAddress, 1, glm::value_ptr(lightPos));
+
+        GLuint lightColorAdd = glGetUniformLocation(shaderProg, "lightColor");
+        glUniform3fv(lightColorAdd, 1, glm::value_ptr(lightColor));
+
+        GLuint ambientStrAdd = glGetUniformLocation(shaderProg, "ambientStr");
+        glUniform1f(ambientStrAdd, ambientStr);
+
+        GLuint ambientColorAdd= glGetUniformLocation(shaderProg, "ambientColor");
+        glUniform3fv(ambientColorAdd, 1, glm::value_ptr(ambientColor));
+
+        GLuint cameraPosAdd = glGetUniformLocation(shaderProg, "cameraPos");
+        glUniform3fv(cameraPosAdd, 1, glm::value_ptr(cameraPos));
+
+        GLuint specStrAdd = glGetUniformLocation(shaderProg, "specStr");
+        glUniform1f(specStrAdd, specStr);
+
+        GLuint specPhongAdd = glGetUniformLocation(shaderProg, "specPhong");
+        glUniform1f(specPhongAdd, specPhong);
+
         glUniform1i(tex0Address, 0);
 
 
@@ -339,10 +447,16 @@ int main(void)
         glBindVertexArray(VAO);
 
         //Bind The VAO to prep it for drawing
-        glBindVertexArray(VAO);
+        //glBindVertexArray(VAO);
         //Draw the triangle
         //glDrawArrays(GL_TRIANGLES, 0 , 3);
-        glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+
+        glDrawArrays(
+            GL_TRIANGLES,
+            0,
+            fullVertexData.size() / 8
+        );
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -397,7 +511,7 @@ int main(void)
     //Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    //glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
     return 0;

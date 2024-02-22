@@ -8,7 +8,6 @@
     Profile: compatibility
     Extensions:
         GL_3DFX_multisample,
-        GL_3DFX_tbuffer,
         GL_3DFX_texture_compression_FXT1,
         GL_AMD_blend_minmax_factor,
         GL_AMD_conservative_depth,
